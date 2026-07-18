@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import argparse
 import sys
+import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -193,6 +195,7 @@ if __name__ == "__main__":
     print(f"Meal planner dashboard: http://{display_host}:{args.port}")
     if args.host == "0.0.0.0":
         print("For another device, replace 127.0.0.1 with this computer's local IP address.")
+    threading.Timer(0.8, lambda: webbrowser.open(f"http://127.0.0.1:{args.port}")).start()
     print("Press Ctrl+C to stop the local server.")
     try:
         server.serve_forever()

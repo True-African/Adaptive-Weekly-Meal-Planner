@@ -44,6 +44,24 @@ http://COMPUTER_IP:8000
 
 For example, if the computer shows `192.168.1.25`, enter `http://192.168.1.25:8000` on the phone. Keep the computer's terminal and server running while using the dashboard. The layout adapts to the phone screen. For public use, deploy behind HTTPS and an authenticated production server instead of exposing the development server.
 
+### Dashboard troubleshooting
+
+Run these commands in the **repository folder**, not inside `scripts` or `web`:
+
+```bash
+python web_app.py --host 127.0.0.1 --port 8000
+```
+
+The server opens the dashboard automatically. If it does not, open `http://127.0.0.1:8000` manually while the terminal remains running. To check that the server is alive, open `http://127.0.0.1:8000/health`; it should show `{"status":"ok"}`.
+
+If port 8000 is already in use, start another port and open the matching address:
+
+```bash
+python web_app.py --host 127.0.0.1 --port 8001
+```
+
+Do not open `web/index.html` by double-clicking it because the dashboard calls the Python `/api/plan` endpoint. If the terminal shows a Python error, copy that error and check that Python 3.10 or newer is installed with `python --version`.
+
 ## Use the command-line engine
 
 ```bash
