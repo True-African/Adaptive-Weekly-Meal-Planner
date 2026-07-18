@@ -17,8 +17,8 @@ python --version
 ### 2. Download the repository
 
 ```bash
-git clone https://github.com/True-African/AdaptiveWeeklyMealPlanner.git
-cd AdaptiveWeeklyMealPlanner
+git clone https://github.com/True-African/Adaptive-Weekly-Meal-Planner.git
+cd Adaptive-Weekly-Meal-Planner
 ```
 
 ### 3. Describe your location
