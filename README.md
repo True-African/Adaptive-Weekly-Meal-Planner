@@ -179,6 +179,24 @@ The reference engine is intentionally dependency-free so it can be embedded in:
 
 For local users, present today's meals first, followed by what to buy, substitutions, batch-cooking guidance, and simple language or icon cues. Keep technical evidence and scoring in an appendix or implementer view.
 
+## Open the browser dashboard
+
+The repository includes a responsive browser dashboard that calls the same Python planner. It needs no extra Python package:
+
+```bash
+python web_app.py
+```
+
+Open `http://127.0.0.1:8000` on the computer. Enter a location, household members, and any foods confirmed by a local person. The dashboard displays the seven-day meal plan first, followed by household-scaled budget estimates and data-confidence notes. The demonstration-price checkbox is for testing the interface; replace it with current local market observations for real budgeting.
+
+To view it on a phone connected to the same trusted Wi-Fi network, start the server on the local network:
+
+```bash
+python web_app.py --host 0.0.0.0 --port 8000
+```
+
+Find the computer's local IPv4 address with `ipconfig` on Windows or `ip addr` on Linux/macOS, then open `http://COMPUTER_IP:8000` on the phone. Keep this mode on a trusted network only; for public use, place the application behind HTTPS and an authenticated production server. A Hugging Face Space can use the same `build_plan()` function behind Gradio or another web frontend.
+
 ## Testing
 
 Run the checks before publishing changes:

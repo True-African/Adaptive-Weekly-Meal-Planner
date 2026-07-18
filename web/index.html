@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adaptive Weekly Meal Planner</title>
+  <style>
+    :root { --ink:#17231f; --muted:#68746f; --line:#d9e1dc; --paper:#f7faf7; --panel:#fff; --green:#1d6b4f; --green-soft:#e6f3eb; --amber:#a75d16; --amber-soft:#fff2df; --red:#a23d32; --shadow:0 8px 24px rgba(23,35,31,.07); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
+    header { background:#173d31; color:#fff; padding:28px 20px 32px; }
+    .wrap { width:min(1120px,calc(100% - 32px)); margin:auto; }
+    header .wrap { display:flex; justify-content:space-between; gap:24px; align-items:end; }
+    h1,h2,h3,p { margin:0; } h1 { font-size:clamp(1.55rem,3vw,2.35rem); line-height:1.1; max-width:620px; } h2 { font-size:1.2rem; } h3 { font-size:1rem; }
+    .eyebrow { color:#b9ddc7; font-size:.75rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:8px; }
+    .header-note { color:#d9ede0; max-width:340px; font-size:.9rem; }
+    main { padding:24px 0 48px; } .layout { display:grid; grid-template-columns:310px 1fr; gap:20px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:20px; }
+    .controls { position:sticky; top:16px; } label { display:block; color:var(--muted); font-size:.78rem; font-weight:700; margin:16px 0 6px; } label:first-of-type { margin-top:0; }
+    input,textarea { width:100%; border:1px solid #c9d5ce; border-radius:6px; background:#fff; color:var(--ink); padding:10px 11px; font:inherit; } textarea { min-height:54px; resize:vertical; }
+    input:focus,textarea:focus { outline:3px solid #bfe2cc; border-color:var(--green); }
+    .household { display:grid; grid-template-columns:1fr 64px; gap:7px 10px; align-items:center; } .household label { margin:0; font-weight:500; color:var(--ink); }
+    .household input { padding:7px 8px; } .check { display:flex; gap:8px; align-items:flex-start; color:var(--ink); font-weight:500; margin-top:16px; } .check input { width:auto; margin-top:4px; }
+    button { width:100%; border:0; border-radius:6px; background:var(--green); color:#fff; padding:11px 14px; font:700 15px inherit; cursor:pointer; margin-top:18px; } button:hover { background:#15573f; } button:disabled { opacity:.6; cursor:wait; }
+    .hint { color:var(--muted); font-size:.8rem; margin-top:7px; } .error { color:var(--red); background:#fdecea; padding:10px; border-radius:6px; margin-top:14px; }
+    .empty { min-height:420px; display:grid; place-items:center; text-align:center; color:var(--muted); } .empty strong { display:block; color:var(--ink); margin-bottom:6px; }
+    .result-head { display:flex; justify-content:space-between; align-items:start; gap:16px; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:18px; } .result-head p { color:var(--muted); font-size:.88rem; }
+    .status { border-radius:999px; background:var(--green-soft); color:var(--green); padding:5px 10px; font-size:.75rem; font-weight:700; white-space:nowrap; }
+    .status.warn { background:var(--amber-soft); color:var(--amber); }
+    .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; } .metric { border:1px solid var(--line); border-radius:7px; padding:13px; } .metric small { display:block; color:var(--muted); font-size:.74rem; } .metric strong { display:block; margin-top:3px; font-size:1.15rem; }
+    .days { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .day { border:1px solid var(--line); border-radius:7px; overflow:hidden; } .day-title { background:#eef5f0; padding:9px 12px; font-weight:750; } .meal { padding:10px 12px; border-top:1px solid var(--line); } .meal b { display:block; color:var(--green); font-size:.76rem; text-transform:uppercase; letter-spacing:.04em; } .meal span { display:block; margin-top:2px; }
+    .support { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; } .support section { border-top:3px solid var(--green); padding-top:10px; } .support p,.support li { color:var(--muted); font-size:.86rem; } ul { padding-left:18px; margin:7px 0 0; }
+    .budget { margin-top:18px; } .budget table { width:100%; border-collapse:collapse; font-size:.84rem; } th,td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); } th { color:var(--muted); font-size:.72rem; text-transform:uppercase; } .budget-total { margin-top:10px; font-weight:750; }
+    .discovery { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); } .places { max-height:180px; overflow:auto; margin-top:8px; } .place { padding:7px 0; border-bottom:1px solid var(--line); font-size:.82rem; } .place small { display:block; color:var(--muted); }
+    footer { color:var(--muted); text-align:center; font-size:.78rem; padding:0 16px 24px; }
+    @media (max-width:760px) { header .wrap { display:block; } .header-note { margin-top:12px; } .layout { display:block; } .controls { position:static; margin-bottom:16px; } .days,.support { grid-template-columns:1fr; } .summary { grid-template-columns:1fr 1fr; } .summary .metric:last-child { grid-column:1/-1; } .result-head { display:block; } .status { display:inline-block; margin-top:10px; } .panel { padding:16px; } }
+  </style>
+</head>
+<body>
+  <header><div class="wrap"><div><div class="eyebrow">Local food planning</div><h1>Adaptive Weekly Meal Planner</h1></div><p class="header-note">A practical weekly view for meals, household quantities, substitutions, and budget signals.</p></div></header>
+  <main><div class="wrap layout">
+    <aside class="panel controls">
+      <h2>Build a plan</h2>
+      <p class="hint">Enter what you know. The planner will label anything that still needs local confirmation.</p>
+      <form id="planner-form">
+        <label for="location">Location</label><input id="location" required placeholder="City, district, or town">
+        <label>Household members</label>
+        <div class="household">
+          <label for="adult_man">Adult men</label><input id="adult_man" type="number" min="0" value="1">
+          <label for="adult_woman">Adult women</label><input id="adult_woman" type="number" min="0" value="1">
+          <label for="child_2_5">Children 2-5</label><input id="child_2_5" type="number" min="0" value="1">
+          <label for="child_6_13">Children 6-13</label><input id="child_6_13" type="number" min="0" value="0">
+        </div>
+        <label for="staple">Local foods, if known</label><textarea id="staple" placeholder="Staples: rice, maize, cassava"></textarea>
+        <textarea id="legume" placeholder="Legumes: beans, lentils" aria-label="Local legumes"></textarea>
+        <textarea id="vegetable" placeholder="Vegetables: greens, cabbage" aria-label="Local vegetables"></textarea>
+        <textarea id="fruit" placeholder="Fruits: banana, mango" aria-label="Local fruits"></textarea>
+        <textarea id="animal_protein" placeholder="Protein: eggs, fish, milk" aria-label="Local animal proteins"></textarea>
+        <textarea id="healthy_fat" placeholder="Healthy fats: avocado, groundnuts" aria-label="Local healthy fats"></textarea>
+        <label class="check"><input id="discover" type="checkbox"><span>Search mapped food places for this location</span></label>
+        <label class="check"><input id="sample_market" type="checkbox" checked><span>Use demonstration market prices</span></label>
+        <p class="hint">Demonstration prices are for testing the interface only. Replace them with current local observations before budgeting.</p>
+        <button id="generate" type="submit">Generate weekly plan</button>
+        <div id="error" class="error" hidden></div>
+      </form>
+    </aside>
+    <section id="output" class="panel empty"><div><strong>Your weekly plan will appear here</strong><span>Meals first, then budget and local data notes.</span></div></section>
+  </div></main>
+  <footer>OpenStreetMap data, when requested, is shown as a place-access signal only. It does not prove current stock or prices.</footer>
+  <script>
+    const groups = ['staple','legume','vegetable','fruit','animal_protein','healthy_fat'];
+    const householdKeys = ['adult_man','adult_woman','adolescent','child_2_5','child_6_13','older_adult'];
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const money = (value, currency) => `${esc(currency || '')} ${Number(value || 0).toLocaleString(undefined,{maximumFractionDigits:2})}`.trim();
+    function household() { return Object.fromEntries(householdKeys.map(key => [key, Number($(key)?.value || 0)])); }
+    function render(result) {
+      const budget = result.budget_estimate || {}; const total = Object.entries(budget.totals_by_currency || {}).map(([c,v]) => money(v,c)).join(', ') || 'No current prices';
+      const warn = (result.plan_status || '').includes('fallback') || budget.price_coverage !== 'complete';
+      const days = (result.days || []).map(day => `<article class="day"><div class="day-title">Day ${day.day}</div><div class="meal"><b>Breakfast</b><span>${esc(day.breakfast)}</span></div><div class="meal"><b>Lunch</b><span>${esc(day.lunch)}</span></div><div class="meal"><b>Dinner</b><span>${esc(day.dinner)}</span></div><div class="meal"><b>Snack</b><span>${esc(day.snack)}</span></div></article>`).join('');
+      const items = (budget.line_items || []).slice(0,8).map(item => `<tr><td>${esc(item.commodity)}</td><td>${item.quantity} ${esc(item.unit)}</td><td>${money(item.estimated_cost,item.currency)}${item.provisional ? ' <small>(provisional)</small>' : ''}</td></tr>`).join('');
+      const discovery = result.location_discovery ? `<div class="discovery"><h3>Nearby food access</h3><p class="hint">${esc(result.location_discovery.resolved_location || result.location)}. These places still need local verification.</p><div class="places">${(result.location_discovery.nearby_food_places || []).slice(0,12).map(place => `<div class="place"><strong>${esc(place.name || 'Unnamed place')}</strong><small>${esc(place.type || 'food place')} · ${esc(place.distance_km ?? '?')} km · inventory unknown</small></div>`).join('') || '<p class="hint">No mapped food places were found.</p>'}</div></div>` : '';
+      $('output').className = 'panel'; $('output').innerHTML = `<div class="result-head"><div><h2>${esc(result.location || result.web_inputs?.location || 'Weekly plan')}</h2><p>${esc(result.country || 'Location country not supplied')} · household factor ${esc(result.adult_equivalents)}</p></div><span class="status ${warn ? 'warn' : ''}">${esc((result.plan_status || 'ready').replaceAll('_',' '))}</span></div><div class="summary"><div class="metric"><small>Weekly budget</small><strong>${total}</strong></div><div class="metric"><small>Price coverage</small><strong>${esc(budget.price_coverage || 'unavailable')}</strong></div><div class="metric"><small>Household factor</small><strong>${esc(result.adult_equivalents)}</strong></div></div><h2>Seven-day meals</h2><div class="days">${days}</div><div class="support"><section><h3>Budget and shopping signals</h3><p>${esc(budget.method_note || 'Add current market observations for a local estimate.')}</p><div class="budget"><table><thead><tr><th>Food</th><th>Quantity</th><th>Estimate</th></tr></thead><tbody>${items || '<tr><td colspan="3">No priced foods available yet.</td></tr>'}</tbody></table><div class="budget-total">Total: ${total}</div></div></section><section><h3>Notes for the household</h3><ul>${(result.assumptions || []).slice(0,5).map(note => `<li>${esc(note)}</li>`).join('') || '<li>Use local substitutions when a food is unavailable or expensive.</li>'}</ul></section></div>${discovery}</div>`;
+    }
+    $('planner-form').addEventListener('submit', async event => { event.preventDefault(); $('error').hidden = true; $('generate').disabled = true; $('generate').textContent = 'Generating...'; const payload = {location:$('location').value, household:household(), discover:$('discover').checked, use_sample_market:$('sample_market').checked, local_foods:Object.fromEntries(groups.map(group => [group,$(group).value]))}; try { const response = await fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Could not generate a plan.'); render(data); } catch (error) { $('error').textContent = error.message; $('error').hidden = false; } finally { $('generate').disabled = false; $('generate').textContent = 'Generate weekly plan'; } });
+  </script>
+</body>
+</html>
