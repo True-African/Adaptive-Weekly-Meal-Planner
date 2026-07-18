@@ -62,7 +62,17 @@ python web_app.py --host 127.0.0.1 --port 8001
 
 Do not open `web/index.html` by double-clicking it because the dashboard calls the Python `/api/plan` endpoint. If the terminal shows a Python error, copy that error and check that Python 3.10 or newer is installed with `python --version`.
 
-For `http://127.0.0.1:8000` on the same computer, Windows Firewall is usually not involved. For phone access, Windows may block incoming connections. Allow Python through Windows Defender Firewall on **Private networks** when prompted, make sure the computer network is set to Private, and confirm that both devices use the same Wi-Fi. As a temporary development rule, run PowerShell as Administrator:
+For `http://127.0.0.1:8000` on the same computer, Windows Firewall is usually not involved. For phone access, Windows may block incoming connections. Allow Python through Windows Defender Firewall on **Private networks** when prompted, make sure the computer network is set to Private, and confirm that both devices use the same Wi-Fi.
+
+Start the server specifically for another device. The terminal will print the LAN URL to use:
+
+```bash
+python web_app.py --host 0.0.0.0 --port 8000
+```
+
+Do not enter `127.0.0.1` or `localhost` on the phone; those addresses mean "this phone". Enter the computer address printed by the server, for example `http://192.168.1.25:8000`.
+
+As a temporary development rule, run PowerShell as Administrator:
 
 ```powershell
 New-NetFirewallRule -DisplayName "Adaptive Meal Planner 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow -Profile Private

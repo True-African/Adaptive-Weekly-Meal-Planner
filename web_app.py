@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import argparse
+import socket
 import sys
 import threading
 import webbrowser
@@ -194,7 +195,11 @@ if __name__ == "__main__":
     display_host = "127.0.0.1" if args.host == "0.0.0.0" else args.host
     print(f"Meal planner dashboard: http://{display_host}:{args.port}")
     if args.host == "0.0.0.0":
-        print("For another device, replace 127.0.0.1 with this computer's local IP address.")
+        print("Open one of these addresses on another device:")
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            address = info[4][0]
+            if not address.startswith("127."):
+                print(f"  http://{address}:{args.port}")
     threading.Timer(0.8, lambda: webbrowser.open(f"http://127.0.0.1:{args.port}")).start()
     print("Press Ctrl+C to stop the local server.")
     try:
