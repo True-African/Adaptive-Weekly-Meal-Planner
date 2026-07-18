@@ -54,7 +54,7 @@ python scripts/adaptive_meal_planner.py \
 
 Use `--offline` to prevent online discovery. Use `--radius-km 10` to search a larger area. Use `--confirm-discovery` to run non-interactively after your application has displayed and verified the discovery checkpoint.
 
-If discovery finds no food places, or cannot identify enough food groups, the planner stops instead of producing a generic local-looking plan. Recover by using `--radius-km 50`, supplying local market data, adding a profile, or confirming foods explicitly:
+The planner always returns a seven-day meal plan. If discovery finds no food places, or cannot identify enough food groups, it asks the user to consult a trusted local person and enter the foods available in each missing group. In a non-interactive run, it uses clearly labelled generic fallback foods so a budget and meal plan are still available:
 
 ```bash
 python scripts/adaptive_meal_planner.py \
@@ -68,9 +68,9 @@ python scripts/adaptive_meal_planner.py \
   --confirmed-foods healthy_fat=avocado,vegetable oil
 ```
 
-Curated profile mode remains available when a local implementer wants to add local names, preferred foods, seasonal notes, or foods commonly grown but not captured in market data. Copy `examples/location_profile.json` and pass it with `--profile`. It is optional.
+The same local confirmation can be supplied non-interactively with `--confirmed-foods group=item1,item2`. Curated profile mode remains available when a local implementer wants to add local names, preferred foods, seasonal notes, or foods commonly grown but not captured in market data. Copy `examples/location_profile.json` and pass it with `--profile`. It is optional.
 
-Important: entering only a city name does not automatically discover local foods. A reliable local data source, such as a market feed, survey, agricultural dataset, or curated profile, is required to make location claims.
+Important: a place name resolves geography and may find mapped food-access points, but map listings do not prove current inventory, prices, or seasonality. The output includes `plan_status`, `verification_checkpoint`, and assumptions so a person can see whether foods came from market data, local confirmation, or fallback logic.
 
 ### 4. Prepare market data when available
 
@@ -99,6 +99,8 @@ python scripts/adaptive_meal_planner.py \
 Add `--profile examples/location_profile.json` when using curated profile mode or combining a profile with market data. Add `--market-data examples/market_prices_schema.csv` only to exercise the offline sample data.
 
 The result is JSON containing seven days of breakfasts, lunches, dinners, snacks, water reminders, nutrition rationales, substitutions, assumptions, and the household adult-equivalent factor.
+
+It also includes `budget_estimate`. This contains weekly line items, household-scaled purchase quantities, harmonised unit prices, totals by currency, and `price_coverage`. Prices based on fewer than five markets are marked provisional, and no market prices means the meal plan is still produced but the budget remains unpriced rather than invented.
 
 Online discovery fills the resolved country from the geocoder and looks up the country currency code through a country-metadata provider. If more than one currency is returned, or a provider is unavailable, keep the currency as a user-verifiable field before showing costs.
 

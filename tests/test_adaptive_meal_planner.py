@@ -10,6 +10,7 @@ from adaptive_meal_planner import (  # noqa: E402
     harmonise_market_rows,
     load_profile,
     plan_week,
+    estimate_budget,
     verification_checkpoint,
 )
 
@@ -78,3 +79,14 @@ class PlannerTests(unittest.TestCase):
         checkpoint = verification_checkpoint(profile, {"food_signals": {"staple": ["bread"]}})
         self.assertEqual(checkpoint["staple"]["discovered_signals"], ["bread"])
         self.assertEqual(checkpoint["staple"]["status"], "confirmed")
+
+    def test_budget_estimate_scales_with_adult_equivalents(self):
+        rows = [{
+            "date": "2026-01-01", "market": f"m{i}", "commodity": "beans",
+            "food_group": "legume", "unit": "kg", "price": "2.0",
+            "currency": "USD", "availability_score": "0.8",
+        } for i in range(5)]
+        foods = harmonise_market_rows(rows)
+        budget = estimate_budget(foods, 2.0)
+        self.assertEqual(budget["totals_by_currency"]["USD"], 3.2)
+        self.assertEqual(budget["price_coverage"], "complete")

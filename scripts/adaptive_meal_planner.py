@@ -22,6 +22,14 @@ from location_discovery import discover_location
 
 
 GROUPS = ("staple", "legume", "vegetable", "fruit", "animal_protein", "healthy_fat")
+WEEKLY_PURCHASE_UNITS_PER_AE = {
+    "staple": 2.5,
+    "legume": 0.8,
+    "vegetable": 2.0,
+    "fruit": 1.5,
+    "animal_protein": 1.0,
+    "healthy_fat": 0.25,
+}
 ADULT_EQUIVALENTS = {
     "adult_man": 1.1, "adult_woman": 0.9, "adolescent": 0.9,
     "child_2_5": 0.45, "child_6_13": 0.7, "older_adult": 0.85,
@@ -192,6 +200,68 @@ def apply_confirmed_foods(profile: LocationProfile, values: Sequence[str]) -> Lo
     return profile
 
 
+def collect_local_confirmation(profile: LocationProfile, missing_groups: Sequence[str], interactive: bool) -> List[str]:
+    """Ask a user to consult a local person when discovery data is incomplete."""
+    if not missing_groups or not interactive:
+        return list(missing_groups)
+    print("Ask a trusted local person what foods are normally available in this location.")
+    print("Enter foods by group, separated by commas. Press Enter if the group is still unknown.")
+    for group in missing_groups:
+        value = input(f"Local foods for {group}: ").strip()
+        if value:
+            profile.foods[group] = [name.strip() for name in value.split(",") if name.strip()]
+    return [group for group in GROUPS if not profile.foods[group]]
+
+
+def _purchase_quantity(group: str, unit: str, adult_equivalents_value: float) -> float:
+    base = WEEKLY_PURCHASE_UNITS_PER_AE[group] * adult_equivalents_value
+    normalized_unit = normalize(unit)
+    if normalized_unit in {"g", "gram", "grams"}:
+        return round(base * 1000, 2)
+    if normalized_unit in {"dozen", "dozens"}:
+        return round(1.0 * adult_equivalents_value if group == "animal_protein" else base, 2)
+    if normalized_unit in {"each", "piece", "pieces"}:
+        return round(14.0 * adult_equivalents_value if group in {"animal_protein", "fruit"} else base, 2)
+    return round(base, 2)
+
+
+def estimate_budget(market_foods: Mapping[str, Food], adult_equivalents_value: float) -> dict:
+    """Estimate weekly food cost using observed prices and transparent purchase heuristics."""
+    line_items = []
+    totals = defaultdict(float)
+    for food in market_foods.values():
+        if food.price is None or not food.currency:
+            continue
+        quantity = _purchase_quantity(food.group, food.unit, adult_equivalents_value)
+        estimated_cost = round(food.price * quantity, 2)
+        totals[food.currency] += estimated_cost
+        line_items.append({
+            "commodity": food.name,
+            "food_group": food.group,
+            "quantity": quantity,
+            "unit": food.unit,
+            "unit_price": food.price,
+            "currency": food.currency,
+            "estimated_cost": estimated_cost,
+            "markets": food.markets,
+            "provisional": food.markets < 5,
+            "availability": round(food.availability, 2),
+        })
+    priced_commodities = {item["commodity"] for item in line_items}
+    return {
+        "adult_equivalents": round(adult_equivalents_value, 2),
+        "line_items": line_items,
+        "totals_by_currency": {currency: round(total, 2) for currency, total in totals.items()},
+        "priced_commodities": len(priced_commodities),
+        "price_coverage": (
+            "unavailable" if not market_foods
+            else "complete" if len(priced_commodities) >= len(market_foods)
+            else "partial"
+        ),
+        "method_note": "Rough weekly purchasing estimate; verify local serving sizes, package sizes, and current prices before spending.",
+    }
+
+
 def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequence[dict]) -> dict:
     market_foods = harmonise_market_rows(rows)
     foods = resolve_foods(profile, market_foods)
@@ -239,6 +309,7 @@ def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequ
             "data_coverage": {"market_food_groups": market_groups, "fallback_food_groups": fallback_groups,
                               "market_commodities": sorted(market_foods)},
             "market_prices": market_prices,
+            "budget_estimate": estimate_budget(market_foods, ae),
             "seasonal_notes": profile.seasonal_notes, "days": days}
 
 
@@ -270,6 +341,7 @@ def main() -> None:
         parser.error("A location is required")
     household = {item.split(":", 1)[0]: int(item.split(":", 1)[1]) for item in args.household if ":" in item}
     discovery = None
+    plan_status = "market_data_or_profile"
     if not args.offline and not args.market_data:
         search_radii = [args.radius_km]
         if args.radius_km < 25:
@@ -292,18 +364,21 @@ def main() -> None:
             "attribution": discovery["attribution"],
         }, indent=2, ensure_ascii=False))
         if discovery.get("provider_errors"):
-            print("Location was resolved, but the nearby-place provider is temporarily unavailable. No plan was generated.")
-            print("Retry later, provide --market-data, or use --profile.")
-            return
+            print("Location was resolved, but the nearby-place provider is temporarily unavailable.")
+            print("The planner will continue with local confirmation or clearly labelled fallback foods.")
+            plan_status = "provider_unavailable"
         if not discovery.get("nearby_food_places"):
-            print("No mapped food-access places were found within the searched area. No plan was generated from assumptions.")
-            print("Try --radius-km 50, provide --market-data, or add a curated profile.")
-            return
-        confirmed = args.confirm_discovery or input("Verify these nearby food sources and continue? [y/N] ").strip().lower() in {"y", "yes"}
-        if not confirmed:
-            print("Discovery stopped. Review the listed places, then rerun with --confirm-discovery.")
-            return
+            print("No mapped food-access places were found within the searched area.")
+            print("The planner will continue after asking for local food confirmation.")
+            plan_status = "no_mapped_food_places"
+        elif not discovery.get("provider_errors"):
+            confirmed = args.confirm_discovery or input("Verify these nearby food sources and continue? [y/N] ").strip().lower() in {"y", "yes"}
+            if not confirmed:
+                print("Discovery was not confirmed; the planner will use local confirmation or clearly labelled fallback foods.")
+                plan_status = "discovery_not_confirmed"
     profile = load_profile(args.profile, location)
+    if not discovery and not args.market_data:
+        plan_status = "profile_fallback" if args.profile else "generic_fallback"
     if discovery:
         profile.country = discovery.get("country", "") or profile.country
         currencies = discovery.get("currencies", [])
@@ -312,20 +387,16 @@ def main() -> None:
         profile = apply_discovery_signals(profile, discovery)
         profile = apply_confirmed_foods(profile, args.confirmed_foods)
         missing_groups = [group for group in GROUPS if not profile.foods[group]]
+        missing_groups = collect_local_confirmation(profile, missing_groups, sys.stdin.isatty())
         if missing_groups:
-            if not args.confirmed_foods and sys.stdin.isatty():
-                print("OSM found places but not enough explicit food signals for a complete plan.")
-                for group in missing_groups:
-                    value = input(f"Confirm local foods for {group} (comma-separated, or Enter to stop): ").strip()
-                    if value:
-                        profile.foods[group] = [name.strip() for name in value.split(",") if name.strip()]
-            missing_groups = [group for group in GROUPS if not profile.foods[group]]
-            if missing_groups:
-                print("No plan generated because these food groups still need local confirmation: " + ", ".join(missing_groups))
-                print("Use --confirmed-foods group=item1,item2 or provide --market-data / --profile.")
-                return
+            plan_status = "partial_local_confirmation_fallback"
+        else:
+            plan_status = "locally_confirmed"
     rows = read_market_rows(args.market_data)
     result = plan_week(profile, household, rows)
+    result["plan_status"] = plan_status
+    if plan_status == "partial_local_confirmation_fallback":
+        result["assumptions"].append("Some food groups were not confirmed by a local person; fallback foods are included and should be verified before purchase.")
     if discovery:
         result["location_discovery"] = discovery
         result["verification_checkpoint"] = verification_checkpoint(profile, discovery)
