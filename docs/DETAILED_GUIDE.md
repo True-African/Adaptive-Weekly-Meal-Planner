@@ -50,6 +50,8 @@ The JSON output contains seven meals per day, assumptions, substitutions, househ
 
 The browser dashboard resolves a location's currency through location discovery. Currency identification and price collection are separate steps: OpenStreetMap and country metadata can identify a currency, but they do not provide current commodity prices. The dashboard therefore refuses to present USD demonstration prices as local currency. Supply market observations with the detected currency to obtain local cost estimates.
 
+For convenience, the dashboard can show an approximate equivalent through its exchange-rate endpoint. It labels the rate date and states that the conversion is not a local market price. This should support orientation and comparison, not replace local price collection.
+
 Supported household factors are:
 
 | Member type | Factor |

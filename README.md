@@ -22,6 +22,8 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) on the computer. Enter a loc
 
 The dashboard identifies the location's currency when the discovery option is enabled. The demonstration-price checkbox is only for testing the interface: those sample prices stay in their source currency and are never falsely converted. To show real local costs, connect market observations whose `currency` matches the detected local currency. Replace demonstration data before using the budget for decisions.
 
+When an exchange-rate service is available, the dashboard also shows an approximate equivalent, such as `USD 25.13` and `approximately RWF 36,932.81`. This is an exchange-rate conversion, not evidence that food costs that amount in the local market.
+
 ### View it on a mobile phone
 
 The Python server runs on the **computer**. The phone only opens the dashboard in its browser.

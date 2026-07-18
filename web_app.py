@@ -11,7 +11,8 @@ import argparse
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -35,6 +36,7 @@ HOUSEHOLD_KEYS = (
     "child_6_13",
     "older_adult",
 )
+EXCHANGE_CACHE: dict[tuple[str, str], dict] = {}
 
 
 def _food_lists(raw_foods: object) -> dict[str, list[str]]:
@@ -114,6 +116,30 @@ def build_plan(payload: dict) -> dict:
     return result
 
 
+def get_exchange_rate(base: str, quote: str) -> dict:
+    base = base.upper().strip()
+    quote = quote.upper().strip()
+    if not base or not quote or len(base) != 3 or len(quote) != 3:
+        raise ValueError("Currency codes must be three letters.")
+    if base == quote:
+        return {"base": base, "quote": quote, "rate": 1.0, "date": None, "source": "same currency"}
+    key = (base, quote)
+    if key in EXCHANGE_CACHE:
+        return EXCHANGE_CACHE[key]
+    query = urlencode({"base": base, "quotes": quote})
+    request = Request(
+        f"https://api.frankfurter.dev/v2/rates?{query}",
+        headers={"User-Agent": "AdaptiveWeeklyMealPlanner/1.0"},
+    )
+    with urlopen(request, timeout=8) as response:
+        rates = json.loads(response.read().decode("utf-8"))
+    if not rates or not isinstance(rates, list) or "rate" not in rates[0]:
+        raise ValueError(f"No exchange rate was returned for {base} to {quote}.")
+    result = {"base": base, "quote": quote, "rate": float(rates[0]["rate"]), "date": rates[0].get("date"), "source": "Frankfurter"}
+    EXCHANGE_CACHE[key] = result
+    return result
+
+
 class PlannerHandler(BaseHTTPRequestHandler):
     def _send(self, status: int, body: bytes, content_type: str) -> None:
         self.send_response(status)
@@ -131,6 +157,11 @@ class PlannerHandler(BaseHTTPRequestHandler):
             return
         if path == "/health":
             self._send(200, b'{"status":"ok"}', "application/json")
+            return
+        if path == "/api/exchange":
+            params = parse_qs(urlparse(self.path).query)
+            rate = get_exchange_rate(params.get("base", [""])[0], params.get("quote", [""])[0])
+            self._send(200, json.dumps(rate).encode("utf-8"), "application/json")
             return
         self._send(404, b'{"error":"Not found"}', "application/json")
 
