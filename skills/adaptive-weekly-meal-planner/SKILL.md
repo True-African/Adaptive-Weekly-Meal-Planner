@@ -35,6 +35,8 @@ Do not treat an international food database as proof that a food is locally avai
 
 Treat OpenStreetMap place listings as evidence of nearby food access, not proof of inventory, prices, or seasonal supply. Display the discovery checkpoint and OSM attribution. Cache requests, use a clear User-Agent, keep the provider replaceable, and respect the public Nominatim usage limits.
 
+If discovery returns no nearby food places or leaves food groups unconfirmed, stop rather than presenting generic foods as local. Request a wider search radius, local market data, an implementer profile, or explicit user-confirmed foods.
+
 ## Planning algorithm
 
 For each meal, target:

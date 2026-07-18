@@ -11,6 +11,7 @@ import csv
 import json
 import math
 import statistics
+import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -179,6 +180,18 @@ def apply_discovery_signals(profile: LocationProfile, discovery: Mapping[str, ob
     return profile
 
 
+def apply_confirmed_foods(profile: LocationProfile, values: Sequence[str]) -> LocationProfile:
+    """Apply checkpoint entries formatted as group=item1,item2."""
+    for value in values:
+        if "=" not in value:
+            continue
+        group, names = value.split("=", 1)
+        group = normalize(group)
+        if group in GROUPS:
+            profile.foods[group] = [name.strip() for name in names.split(",") if name.strip()]
+    return profile
+
+
 def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequence[dict]) -> dict:
     market_foods = harmonise_market_rows(rows)
     foods = resolve_foods(profile, market_foods)
@@ -224,6 +237,7 @@ def main() -> None:
     parser.add_argument("--offline", action="store_true", help="Do not query OpenStreetMap")
     parser.add_argument("--radius-km", type=float, default=5.0)
     parser.add_argument("--confirm-discovery", action="store_true", help="Accept the displayed OSM checkpoint")
+    parser.add_argument("--confirmed-foods", action="append", default=[], help="Checkpoint input: group=item1,item2")
     parser.add_argument("--household", nargs="*", default=["adult_man:1", "adult_woman:1", "child_2_5:1"])
     args = parser.parse_args()
     location = args.location or input("Enter your location: ").strip()
@@ -237,6 +251,10 @@ def main() -> None:
             "resolved_location": discovery["resolved_location"],
             "nearby_food_places": discovery["nearby_food_places"][:20],
             "food_signals": discovery["food_signals"],
+            "country": discovery["country"],
+            "country_code": discovery["country_code"],
+            "currencies": discovery["currencies"],
+            "provider_errors": discovery["provider_errors"],
             "limitations": discovery["limitations"],
             "attribution": discovery["attribution"],
         }, indent=2, ensure_ascii=False))
@@ -246,8 +264,33 @@ def main() -> None:
             return
     profile = load_profile(args.profile, location)
     if discovery:
+        if discovery.get("provider_errors"):
+            print("Location was resolved, but the nearby-place provider is temporarily unavailable. No plan was generated from assumptions.")
+            print("Retry later, use --radius-km, provide --market-data, or use --profile.")
+            return
         profile.country = discovery.get("country", "") or profile.country
+        currencies = discovery.get("currencies", [])
+        if not profile.currency and len(currencies) == 1:
+            profile.currency = currencies[0]
         profile = apply_discovery_signals(profile, discovery)
+        profile = apply_confirmed_foods(profile, args.confirmed_foods)
+        missing_groups = [group for group in GROUPS if not profile.foods[group]]
+        if not discovery["nearby_food_places"]:
+            print("No mapped food-access places were found near this location. No plan was generated from assumptions.")
+            print("Try --radius-km with a wider area, provide --market-data, or add a curated profile.")
+            return
+        if missing_groups:
+            if not args.confirmed_foods and sys.stdin.isatty():
+                print("OSM found places but not enough explicit food signals for a complete plan.")
+                for group in missing_groups:
+                    value = input(f"Confirm local foods for {group} (comma-separated, or Enter to stop): ").strip()
+                    if value:
+                        profile.foods[group] = [name.strip() for name in value.split(",") if name.strip()]
+            missing_groups = [group for group in GROUPS if not profile.foods[group]]
+            if missing_groups:
+                print("No plan generated because these food groups still need local confirmation: " + ", ".join(missing_groups))
+                print("Use --confirmed-foods group=item1,item2 or provide --market-data / --profile.")
+                return
     rows = read_market_rows(args.market_data)
     result = plan_week(profile, household, rows)
     if discovery:

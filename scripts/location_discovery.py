@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_FALLBACK_URL = "https://overpass.kumi.systems/api/interpreter"
 OSM_ATTRIBUTION = "OpenStreetMap contributors, ODbL 1.0"
 
 SHOP_SIGNALS = {
@@ -41,7 +42,7 @@ def _request_json(url: str, params: Dict[str, str], user_agent: str) -> dict:
 def _cache_file(location: str, cache_dir: Optional[str]) -> Optional[Path]:
     if not cache_dir:
         return None
-    key = hashlib.sha256(location.strip().lower().encode("utf-8")).hexdigest()[:20]
+    key = hashlib.sha256(("v3:" + location.strip().lower()).encode("utf-8")).hexdigest()[:20]
     path = Path(cache_dir)
     path.mkdir(parents=True, exist_ok=True)
     return path / f"{key}.json"
@@ -83,6 +84,28 @@ def _signals(elements: List[dict]) -> Dict[str, List[str]]:
     return result
 
 
+def lookup_currencies(country_code: str, user_agent: str) -> List[str]:
+    """Look up ISO currency codes for a resolved country; return [] on failure."""
+    if not country_code:
+        return []
+    sources = (
+        (f"https://restcountries.com/v3.1/alpha/{country_code.lower()}", {"fields": "currencies"}),
+        (f"https://countries.dev/alpha/{country_code.upper()}", {}),
+    )
+    for endpoint, params in sources:
+        try:
+            data = _request_json(endpoint, params, user_agent)
+            record = data[0] if isinstance(data, list) else data
+            currencies = record.get("currencies") or {}
+            if isinstance(currencies, dict) and currencies:
+                return sorted(currencies.keys())
+            if isinstance(currencies, list) and currencies:
+                return sorted(item.get("code", "") for item in currencies if item.get("code"))
+        except Exception:
+            continue
+    return []
+
+
 def discover_location(
     location: str,
     radius_km: float = 5.0,
@@ -109,8 +132,15 @@ def discover_location(
     match = geocoded[0]
     time.sleep(1.0)
     query = _overpass_query(match["lat"], match["lon"], int(radius_km * 1000))
-    overpass = _request_json(OVERPASS_URL, {"data": query}, user_agent)
-    elements = overpass.get("elements", [])
+    errors = []
+    elements = []
+    for endpoint in (OVERPASS_URL, OVERPASS_FALLBACK_URL):
+        try:
+            overpass = _request_json(endpoint, {"data": query}, user_agent)
+            elements = overpass.get("elements", [])
+            break
+        except Exception as exc:
+            errors.append(f"{endpoint}: {exc}")
     result = {
         "query": location,
         "resolved_location": match.get("display_name", location),
@@ -119,9 +149,11 @@ def discover_location(
         "address": match.get("address", {}),
         "country": match.get("address", {}).get("country", ""),
         "country_code": match.get("address", {}).get("country_code", "").upper(),
+        "currencies": lookup_currencies(match.get("address", {}).get("country_code", ""), user_agent),
         "radius_km": radius_km,
         "nearby_food_places": [_place_from_element(element) for element in elements],
         "food_signals": _signals(elements),
+        "provider_errors": errors if not elements else [],
         "verification_required": True,
         "limitations": [
             "OpenStreetMap place tags do not prove current inventory, prices, or seasonal availability.",

@@ -52,6 +52,20 @@ python scripts/adaptive_meal_planner.py \
 
 Use `--offline` to prevent online discovery. Use `--radius-km 10` to search a larger area. Use `--confirm-discovery` to run non-interactively after your application has displayed and verified the discovery checkpoint.
 
+If discovery finds no food places, or cannot identify enough food groups, the planner stops instead of producing a generic local-looking plan. Recover by widening the search area, supplying local market data, adding a profile, or confirming foods explicitly:
+
+```bash
+python scripts/adaptive_meal_planner.py \
+  --location "Kamwenge, Uganda" \
+  --confirm-discovery \
+  --confirmed-foods staple=maize meal,sweet potato \
+  --confirmed-foods legume=beans,groundnuts \
+  --confirmed-foods vegetable=greens,tomato \
+  --confirmed-foods fruit=banana,papaya \
+  --confirmed-foods animal_protein=eggs,small fish \
+  --confirmed-foods healthy_fat=avocado,vegetable oil
+```
+
 Curated profile mode remains available when a local implementer wants to add local names, preferred foods, seasonal notes, or foods commonly grown but not captured in market data. Copy `examples/location_profile.json` and pass it with `--profile`. It is optional.
 
 Important: entering only a city name does not automatically discover local foods. A reliable local data source, such as a market feed, survey, agricultural dataset, or curated profile, is required to make location claims.
@@ -84,7 +98,7 @@ Add `--profile examples/location_profile.json` when using curated profile mode o
 
 The result is JSON containing seven days of breakfasts, lunches, dinners, snacks, water reminders, nutrition rationales, substitutions, assumptions, and the household adult-equivalent factor.
 
-Online discovery fills the resolved country from the geocoder and records the country code. Currency is not guessed from a map listing: supply it through market-price data or add a user confirmation field in the app before showing costs.
+Online discovery fills the resolved country from the geocoder and looks up the country currency code through a country-metadata provider. If more than one currency is returned, or a provider is unavailable, keep the currency as a user-verifiable field before showing costs.
 
 Supported household labels include:
 
