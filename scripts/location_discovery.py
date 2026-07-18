@@ -39,10 +39,10 @@ def _request_json(url: str, params: Dict[str, str], user_agent: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-def _cache_file(location: str, cache_dir: Optional[str]) -> Optional[Path]:
+def _cache_file(location: str, radius_km: float, cache_dir: Optional[str]) -> Optional[Path]:
     if not cache_dir:
         return None
-    key = hashlib.sha256(("v3:" + location.strip().lower()).encode("utf-8")).hexdigest()[:20]
+    key = hashlib.sha256((f"v3:{location.strip().lower()}:{radius_km}").encode("utf-8")).hexdigest()[:20]
     path = Path(cache_dir)
     path.mkdir(parents=True, exist_ok=True)
     return path / f"{key}.json"
@@ -118,7 +118,7 @@ def discover_location(
     Cache results and provide a way to replace the public services in deployed
     applications.
     """
-    cache = _cache_file(location, cache_dir)
+    cache = _cache_file(location, radius_km, cache_dir)
     if cache and cache.exists():
         return json.loads(cache.read_text(encoding="utf-8"))
 

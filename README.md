@@ -41,6 +41,8 @@ python scripts/adaptive_meal_planner.py
 
 The checkpoint is important. OpenStreetMap can identify nearby food-related places and some explicit shop types, but it does not prove what is currently in stock, the price, or the full food inventory. Confirm the places and signals before continuing.
 
+When the default 5 km search is empty, the engine automatically retries at 25 km and reports both the attempted radii and the radius that produced the result. A provider timeout is reported separately from a genuine empty map result; retry later or use local market data rather than treating a timeout as evidence that no food access exists.
+
 Market-data mode is useful when you have a local market feed or survey. Provide a CSV with commodity names, food groups, prices, currencies, units, dates, and availability scores. It avoids an online discovery request and uses the supplied observations directly.
 
 ```bash
@@ -52,7 +54,7 @@ python scripts/adaptive_meal_planner.py \
 
 Use `--offline` to prevent online discovery. Use `--radius-km 10` to search a larger area. Use `--confirm-discovery` to run non-interactively after your application has displayed and verified the discovery checkpoint.
 
-If discovery finds no food places, or cannot identify enough food groups, the planner stops instead of producing a generic local-looking plan. Recover by widening the search area, supplying local market data, adding a profile, or confirming foods explicitly:
+If discovery finds no food places, or cannot identify enough food groups, the planner stops instead of producing a generic local-looking plan. Recover by using `--radius-km 50`, supplying local market data, adding a profile, or confirming foods explicitly:
 
 ```bash
 python scripts/adaptive_meal_planner.py \

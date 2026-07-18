@@ -37,6 +37,8 @@ Treat OpenStreetMap place listings as evidence of nearby food access, not proof 
 
 If discovery returns no nearby food places or leaves food groups unconfirmed, stop rather than presenting generic foods as local. Request a wider search radius, local market data, an implementer profile, or explicit user-confirmed foods.
 
+Distinguish an empty map result from a geocoder or Overpass timeout. Retry a wider or alternate provider only when appropriate, and never interpret a provider outage as proof that no food access exists.
+
 ## Planning algorithm
 
 For each meal, target:

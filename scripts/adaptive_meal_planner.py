@@ -246,9 +246,17 @@ def main() -> None:
     household = {item.split(":", 1)[0]: int(item.split(":", 1)[1]) for item in args.household if ":" in item}
     discovery = None
     if not args.offline and not args.market_data:
-        discovery = discover_location(location, radius_km=args.radius_km)
+        search_radii = [args.radius_km]
+        if args.radius_km < 25:
+            search_radii.append(25.0)
+        for search_radius in search_radii:
+            discovery = discover_location(location, radius_km=search_radius)
+            if discovery.get("provider_errors") or discovery.get("nearby_food_places"):
+                break
         print(json.dumps({
             "resolved_location": discovery["resolved_location"],
+            "search_radius_km": discovery["radius_km"],
+            "search_attempts_km": search_radii,
             "nearby_food_places": discovery["nearby_food_places"][:20],
             "food_signals": discovery["food_signals"],
             "country": discovery["country"],
@@ -258,16 +266,20 @@ def main() -> None:
             "limitations": discovery["limitations"],
             "attribution": discovery["attribution"],
         }, indent=2, ensure_ascii=False))
+        if discovery.get("provider_errors"):
+            print("Location was resolved, but the nearby-place provider is temporarily unavailable. No plan was generated.")
+            print("Retry later, provide --market-data, or use --profile.")
+            return
+        if not discovery.get("nearby_food_places"):
+            print("No mapped food-access places were found within the searched area. No plan was generated from assumptions.")
+            print("Try --radius-km 50, provide --market-data, or add a curated profile.")
+            return
         confirmed = args.confirm_discovery or input("Verify these nearby food sources and continue? [y/N] ").strip().lower() in {"y", "yes"}
         if not confirmed:
             print("Discovery stopped. Review the listed places, then rerun with --confirm-discovery.")
             return
     profile = load_profile(args.profile, location)
     if discovery:
-        if discovery.get("provider_errors"):
-            print("Location was resolved, but the nearby-place provider is temporarily unavailable. No plan was generated from assumptions.")
-            print("Retry later, use --radius-km, provide --market-data, or use --profile.")
-            return
         profile.country = discovery.get("country", "") or profile.country
         currencies = discovery.get("currencies", [])
         if not profile.currency and len(currencies) == 1:
@@ -275,10 +287,6 @@ def main() -> None:
         profile = apply_discovery_signals(profile, discovery)
         profile = apply_confirmed_foods(profile, args.confirmed_foods)
         missing_groups = [group for group in GROUPS if not profile.foods[group]]
-        if not discovery["nearby_food_places"]:
-            print("No mapped food-access places were found near this location. No plan was generated from assumptions.")
-            print("Try --radius-km with a wider area, provide --market-data, or add a curated profile.")
-            return
         if missing_groups:
             if not args.confirmed_foods and sys.stdin.isatty():
                 print("OSM found places but not enough explicit food signals for a complete plan.")
