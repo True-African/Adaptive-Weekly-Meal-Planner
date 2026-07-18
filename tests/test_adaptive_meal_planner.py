@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from adaptive_meal_planner import (  # noqa: E402
     adult_equivalents,
+    apply_discovery_signals,
     harmonise_market_rows,
     load_profile,
     plan_week,
@@ -54,3 +55,9 @@ class PlannerTests(unittest.TestCase):
         ]
         plan = plan_week(load_profile(None, "Test town"), {"adult_woman": 1}, rows)
         self.assertTrue(all("rice" in day["breakfast"] for day in plan["days"]))
+
+    def test_verified_discovery_signals_update_profile(self):
+        profile = load_profile(None, "Test town")
+        apply_discovery_signals(profile, {"food_signals": {"staple": ["bread"], "fruit": ["fruit"]}})
+        self.assertEqual(profile.foods["staple"], ["bread"])
+        self.assertEqual(profile.foods["fruit"], ["fruit"])

@@ -17,6 +17,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 
+from location_discovery import discover_location
+
 
 GROUPS = ("staple", "legume", "vegetable", "fruit", "animal_protein", "healthy_fat")
 ADULT_EQUIVALENTS = {
@@ -168,6 +170,15 @@ def adult_equivalents(household: Mapping[str, int]) -> float:
     return max(0.45, sum(ADULT_EQUIVALENTS.get(k, 0.9) * int(v) for k, v in household.items()))
 
 
+def apply_discovery_signals(profile: LocationProfile, discovery: Mapping[str, object]) -> LocationProfile:
+    """Add user-accepted OSM food signals to the active location profile."""
+    signals = discovery.get("food_signals", {})
+    for group, names in signals.items():
+        if group in GROUPS and isinstance(names, list) and names:
+            profile.foods[group] = [str(name) for name in names]
+    return profile
+
+
 def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequence[dict]) -> dict:
     market_foods = harmonise_market_rows(rows)
     foods = resolve_foods(profile, market_foods)
@@ -207,14 +218,42 @@ def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequ
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a location-adaptive weekly meal plan")
-    parser.add_argument("--location", required=True)
+    parser.add_argument("--location", help="City, district, or address to search")
     parser.add_argument("--profile")
     parser.add_argument("--market-data")
+    parser.add_argument("--offline", action="store_true", help="Do not query OpenStreetMap")
+    parser.add_argument("--radius-km", type=float, default=5.0)
+    parser.add_argument("--confirm-discovery", action="store_true", help="Accept the displayed OSM checkpoint")
     parser.add_argument("--household", nargs="*", default=["adult_man:1", "adult_woman:1", "child_2_5:1"])
     args = parser.parse_args()
+    location = args.location or input("Enter your location: ").strip()
+    if not location:
+        parser.error("A location is required")
     household = {item.split(":", 1)[0]: int(item.split(":", 1)[1]) for item in args.household if ":" in item}
-    profile = load_profile(args.profile, args.location)
-    print(json.dumps(plan_week(profile, household, read_market_rows(args.market_data)), indent=2, ensure_ascii=False))
+    discovery = None
+    if not args.offline and not args.market_data:
+        discovery = discover_location(location, radius_km=args.radius_km)
+        print(json.dumps({
+            "resolved_location": discovery["resolved_location"],
+            "nearby_food_places": discovery["nearby_food_places"][:20],
+            "food_signals": discovery["food_signals"],
+            "limitations": discovery["limitations"],
+            "attribution": discovery["attribution"],
+        }, indent=2, ensure_ascii=False))
+        confirmed = args.confirm_discovery or input("Verify these nearby food sources and continue? [y/N] ").strip().lower() in {"y", "yes"}
+        if not confirmed:
+            print("Discovery stopped. Review the listed places, then rerun with --confirm-discovery.")
+            return
+    profile = load_profile(args.profile, location)
+    if discovery:
+        profile.country = discovery.get("country", "") or profile.country
+        profile = apply_discovery_signals(profile, discovery)
+    rows = read_market_rows(args.market_data)
+    result = plan_week(profile, household, rows)
+    if discovery:
+        result["location_discovery"] = discovery
+        result["assumptions"].append("Food availability signals were discovered from OpenStreetMap and accepted at the user checkpoint; confirm inventory locally.")
+    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

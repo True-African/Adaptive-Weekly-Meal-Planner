@@ -5,7 +5,7 @@ description: Generate and implement location-adaptive weekly meal planners that 
 
 # Adaptive Weekly Meal Planner
 
-Treat the location as a configuration, not as a fixed food list. Never assume a country, currency, language, market, or food list unless the user specifies it or the data indicates it.
+Treat the location as a configuration, not as a fixed food list. Prompt for a location when one is missing. If online discovery is enabled, geocode the location, find nearby food-access places, show a verification checkpoint, and use only confirmed signals. Never assume a country, currency, language, market, or food list unless the user specifies it or the data indicates it.
 
 ## Required intake
 
@@ -26,11 +26,14 @@ Collect or label assumptions for:
 Use the following order of evidence:
 
 1. User-supplied foods, restrictions, culture, and preferences.
-2. Local market observations with commodity, food group, price, unit, market, date, and availability.
-3. A country/city profile supplied by the implementer.
-4. A generic food-group fallback, clearly labelled as an assumption.
+2. User-verified location discovery signals from a geocoder/map or local data provider.
+3. Local market observations with commodity, food group, price, unit, market, date, and availability.
+4. A country/city profile supplied by the implementer.
+5. A generic food-group fallback, clearly labelled as an assumption.
 
 Do not treat an international food database as proof that a food is locally available. Unknown foods should be excluded or shown as "needs local confirmation" until a user, health worker, market survey, or trusted local dataset confirms them.
+
+Treat OpenStreetMap place listings as evidence of nearby food access, not proof of inventory, prices, or seasonal supply. Display the discovery checkpoint and OSM attribution. Cache requests, use a clear User-Agent, keep the provider replaceable, and respect the public Nominatim usage limits.
 
 ## Planning algorithm
 
