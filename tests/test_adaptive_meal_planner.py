@@ -10,6 +10,7 @@ from adaptive_meal_planner import (  # noqa: E402
     harmonise_market_rows,
     load_profile,
     plan_week,
+    verification_checkpoint,
 )
 
 
@@ -61,3 +62,19 @@ class PlannerTests(unittest.TestCase):
         apply_discovery_signals(profile, {"food_signals": {"staple": ["bread"], "fruit": ["fruit"]}})
         self.assertEqual(profile.foods["staple"], ["bread"])
         self.assertEqual(profile.foods["fruit"], ["fruit"])
+
+    def test_market_price_summary_marks_fewer_than_five_markets_provisional(self):
+        rows = [{
+            "date": "2026-01-01", "market": "one", "commodity": "beans",
+            "food_group": "legume", "unit": "kg", "price": "2.0",
+            "currency": "USD", "availability_score": "0.8",
+        }]
+        plan = plan_week(load_profile(None, "Test town"), {"adult_woman": 1}, rows)
+        self.assertTrue(plan["market_prices"]["beans"]["provisional"])
+
+    def test_verification_checkpoint_exposes_discovered_and_confirmed_foods(self):
+        profile = load_profile(None, "Test town")
+        apply_discovery_signals(profile, {"food_signals": {"staple": ["bread"]}})
+        checkpoint = verification_checkpoint(profile, {"food_signals": {"staple": ["bread"]}})
+        self.assertEqual(checkpoint["staple"]["discovered_signals"], ["bread"])
+        self.assertEqual(checkpoint["staple"]["status"], "confirmed")

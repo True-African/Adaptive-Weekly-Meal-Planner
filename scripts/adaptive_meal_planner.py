@@ -202,6 +202,18 @@ def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequ
     if fallback_groups:
         assumptions.append("No market observations supplied for: " + ", ".join(fallback_groups) + "; generic or profile foods are used for those groups.")
     currency = profile.currency or next((food.currency for food in market_foods.values() if food.currency), "")
+    market_prices = {
+        food.name: {
+            "price": food.price,
+            "currency": food.currency,
+            "unit": food.unit,
+            "markets": food.markets,
+            "provisional": food.markets < 5,
+            "availability": round(food.availability, 2),
+            "source": food.source,
+        }
+        for food in market_foods.values()
+    }
     days = []
     for day_index in range(7):
         staple = foods["staple"][day_index % len(foods["staple"])]
@@ -226,7 +238,20 @@ def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequ
             "adult_equivalents": round(ae, 2), "assumptions": assumptions,
             "data_coverage": {"market_food_groups": market_groups, "fallback_food_groups": fallback_groups,
                               "market_commodities": sorted(market_foods)},
+            "market_prices": market_prices,
             "seasonal_notes": profile.seasonal_notes, "days": days}
+
+
+def verification_checkpoint(profile: LocationProfile, discovery: Mapping[str, object]) -> dict:
+    signals = discovery.get("food_signals", {})
+    return {
+        group: {
+            "discovered_signals": list(signals.get(group, [])),
+            "confirmed_foods": list(profile.foods.get(group, [])),
+            "status": "confirmed" if profile.foods.get(group) else "needs_confirmation",
+        }
+        for group in GROUPS
+    }
 
 
 def main() -> None:
@@ -303,6 +328,7 @@ def main() -> None:
     result = plan_week(profile, household, rows)
     if discovery:
         result["location_discovery"] = discovery
+        result["verification_checkpoint"] = verification_checkpoint(profile, discovery)
         result["assumptions"].append("Food availability signals were discovered from OpenStreetMap and accepted at the user checkpoint; confirm inventory locally.")
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

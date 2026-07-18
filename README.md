@@ -102,6 +102,19 @@ The result is JSON containing seven days of breakfasts, lunches, dinners, snacks
 
 Online discovery fills the resolved country from the geocoder and looks up the country currency code through a country-metadata provider. If more than one currency is returned, or a provider is unavailable, keep the currency as a user-verifiable field before showing costs.
 
+### 6. Render the verification and price data
+
+Use `location_discovery.nearby_food_places` to display each place with its distance, source, last-checked time, and status fields. The statuses are deliberately explicit:
+
+```text
+confidence: place_access_only
+inventory_status: unknown
+price_status: unknown
+seasonal_status: unknown
+```
+
+Use `verification_checkpoint` to render one confirmation control per food group. Use `market_prices` to show the harmonised price, currency, unit, number of markets, availability, and whether the estimate is provisional. Do not show a price as current when `provisional` is true without a clear label.
+
 Supported household labels include:
 
 | Member type | Planning factor |

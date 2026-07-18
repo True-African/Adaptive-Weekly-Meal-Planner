@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urlencode
@@ -58,16 +60,32 @@ def _overpass_query(lat: str, lon: str, radius_m: int) -> str:
 out center tags;"""
 
 
-def _place_from_element(element: dict) -> dict:
+def _place_from_element(element: dict, origin_lat: float, origin_lon: float) -> dict:
     tags = element.get("tags", {})
     center = element.get("center", {})
+    latitude = element.get("lat", center.get("lat"))
+    longitude = element.get("lon", center.get("lon"))
+    distance_km = None
+    if latitude is not None and longitude is not None:
+        lat1, lon1, lat2, lon2 = map(math.radians, [origin_lat, origin_lon, float(latitude), float(longitude)])
+        delta_lat = lat2 - lat1
+        delta_lon = lon2 - lon1
+        haversine = math.sin(delta_lat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(delta_lon / 2) ** 2
+        distance_km = round(6371.0 * 2 * math.asin(math.sqrt(haversine)), 2)
     return {
         "name": tags.get("name") or tags.get("shop") or tags.get("amenity") or "Unnamed food place",
         "type": tags.get("shop") or tags.get("amenity") or "food place",
-        "latitude": element.get("lat", center.get("lat")),
-        "longitude": element.get("lon", center.get("lon")),
+        "latitude": latitude,
+        "longitude": longitude,
+        "distance_km": distance_km,
         "opening_hours": tags.get("opening_hours", ""),
         "website": tags.get("website") or tags.get("contact:website", ""),
+        "source": "OpenStreetMap",
+        "last_checked": datetime.now(timezone.utc).isoformat(),
+        "confidence": "place_access_only",
+        "inventory_status": "unknown",
+        "price_status": "unknown",
+        "seasonal_status": "unknown",
     }
 
 
@@ -151,7 +169,7 @@ def discover_location(
         "country_code": match.get("address", {}).get("country_code", "").upper(),
         "currencies": lookup_currencies(match.get("address", {}).get("country_code", ""), user_agent),
         "radius_km": radius_km,
-        "nearby_food_places": [_place_from_element(element) for element in elements],
+        "nearby_food_places": [_place_from_element(element, float(match["lat"]), float(match["lon"])) for element in elements],
         "food_signals": _signals(elements),
         "provider_errors": errors if not elements else [],
         "verification_required": True,
