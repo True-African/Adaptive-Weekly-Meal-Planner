@@ -48,6 +48,8 @@ python scripts/adaptive_meal_planner.py \
 
 The JSON output contains seven meals per day, assumptions, substitutions, household adult-equivalent factors, `market_prices`, and `budget_estimate`. The budget includes household-scaled purchase quantities, line items, totals by currency, and `price_coverage`. It is a rough planning estimate, not a guarantee of what a household will spend.
 
+The browser dashboard resolves a location's currency through location discovery. Currency identification and price collection are separate steps: OpenStreetMap and country metadata can identify a currency, but they do not provide current commodity prices. The dashboard therefore refuses to present USD demonstration prices as local currency. Supply market observations with the detected currency to obtain local cost estimates.
+
 Supported household factors are:
 
 | Member type | Factor |

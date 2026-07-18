@@ -90,6 +90,18 @@ def build_plan(payload: dict) -> dict:
 
     result = plan_week(profile, household, rows)
     result["plan_status"] = plan_status
+    result["local_currency"] = profile.currency
+    market_currencies = {str(row.get("currency", "")).strip() for row in rows if str(row.get("currency", "")).strip()}
+    if payload.get("use_sample_market"):
+        result["currency_status"] = "demo_prices_not_local"
+        result["assumptions"].append("Demonstration prices remain in their source currency and were not converted into the detected local currency.")
+    elif profile.currency and market_currencies and profile.currency not in market_currencies:
+        result["currency_status"] = "price_currency_mismatch"
+        result["assumptions"].append("Market prices use a currency different from the detected local currency; replace them with local observations before budgeting.")
+    elif profile.currency:
+        result["currency_status"] = "local_currency_identified"
+    else:
+        result["currency_status"] = "local_currency_unknown"
     result["web_inputs"] = {
         "location": location,
         "household": household,

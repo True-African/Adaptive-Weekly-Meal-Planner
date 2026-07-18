@@ -20,7 +20,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) on the computer. Enter a loc
 - local food confirmation and substitutions;
 - optional mapped food-access places from OpenStreetMap.
 
-The demonstration-price checkbox is only for testing the interface. Replace it with current local market observations before using the budget for decisions.
+The dashboard identifies the location's currency when the discovery option is enabled. The demonstration-price checkbox is only for testing the interface: those sample prices stay in their source currency and are never falsely converted. To show real local costs, connect market observations whose `currency` matches the detected local currency. Replace demonstration data before using the budget for decisions.
 
 ### View it on a mobile phone
 
