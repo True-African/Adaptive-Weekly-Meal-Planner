@@ -44,3 +44,13 @@ class PlannerTests(unittest.TestCase):
             plan = plan_week(load_profile(str(profile_path), "ignored"), {"adult_woman": 1}, [])
         self.assertEqual(len(plan["days"]), 7)
         self.assertEqual(plan["days"][0]["breakfast"], "bread with egg")
+
+    def test_market_food_group_does_not_add_generic_foods(self):
+        rows = [
+            {"date": "2026-01-01", "market": f"m{i}", "commodity": "rice",
+             "food_group": "staple", "unit": "kg", "price": "1.0",
+             "currency": "USD", "availability_score": "0.9"}
+            for i in range(5)
+        ]
+        plan = plan_week(load_profile(None, "Test town"), {"adult_woman": 1}, rows)
+        self.assertTrue(all("rice" in day["breakfast"] for day in plan["days"]))

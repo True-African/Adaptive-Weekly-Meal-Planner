@@ -40,7 +40,7 @@ Important: entering only a city name does not automatically discover local foods
 
 ### 4. Prepare market data
 
-Use `examples/market_prices_schema.csv` as the template. Each row should contain:
+Use `examples/market_prices_schema.csv` as the template. The checked-in values are illustrative only; replace them with observations from the target location. Each row should contain:
 
 `date, market, administrative area, commodity, food group, unit, price, currency, availability score, source`
 
@@ -50,7 +50,7 @@ The `food_group` value must be one of:
 
 `staple`, `legume`, `vegetable`, `fruit`, `animal_protein`, or `healthy_fat`.
 
-Availability scores range from `0` to `1`, where `1` means readily available. Do not enter a price without its currency and unit.
+Availability scores range from `0` to `1`, where `1` means readily available. Do not enter a price without its currency and unit. The generated output reports which food groups came from market data and which groups still use fallback foods.
 
 ### 5. Generate a weekly plan
 

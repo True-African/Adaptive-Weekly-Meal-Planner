@@ -82,13 +82,13 @@ def load_profile(path: Optional[str], location: str) -> LocationProfile:
     raw = {}
     if path:
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    foods = {g: list(raw.get("foods", {}).get(g, DEFAULT_PROFILE[g])) for g in GROUPS}
+    foods = {g: list(raw.get("foods", {}).get(g, DEFAULT_PROFILE[g] if path else [])) for g in GROUPS}
     return LocationProfile(
         location=raw.get("location", location), country=raw.get("country", ""),
         currency=raw.get("currency", ""), languages=list(raw.get("languages", ["English"])),
         foods=foods, preferred_foods=list(raw.get("preferred_foods", [])),
         local_names=dict(raw.get("local_names", {})), seasonal_notes=raw.get("seasonal_notes", ""),
-        assumptions=[] if path else ["No local profile supplied; generic food-group defaults are being used."],
+        assumptions=[] if path else ["No local profile supplied; market observations are used for covered food groups."],
     )
 
 
@@ -150,6 +150,10 @@ def resolve_foods(profile: LocationProfile, market_foods: Mapping[str, Food]) ->
         by_group[food.group].append(food)
         seen.add(food.name)
     for group, names in profile.foods.items():
+        if not names and by_group[group]:
+            continue
+        if not names:
+            names = DEFAULT_PROFILE[group]
         for name in names:
             key = normalize(name)
             if key not in seen:
@@ -168,6 +172,12 @@ def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequ
     market_foods = harmonise_market_rows(rows)
     foods = resolve_foods(profile, market_foods)
     ae = adult_equivalents(household)
+    market_groups = sorted({food.group for food in market_foods.values()})
+    fallback_groups = [group for group in GROUPS if not any(food.markets for food in foods[group])]
+    assumptions = list(profile.assumptions)
+    if fallback_groups:
+        assumptions.append("No market observations supplied for: " + ", ".join(fallback_groups) + "; generic or profile foods are used for those groups.")
+    currency = profile.currency or next((food.currency for food in market_foods.values() if food.currency), "")
     days = []
     for day_index in range(7):
         staple = foods["staple"][day_index % len(foods["staple"])]
@@ -188,8 +198,10 @@ def plan_week(profile: LocationProfile, household: Mapping[str, int], rows: Sequ
             "rationale": "Combines an energy food, protein, and produce; rotate foods to support dietary diversity.",
             "substitutions": [f"Replace {vegetable.name} with another affordable vegetable.", f"Replace {protein.name} with another protein food."],
         })
-    return {"location": profile.location, "country": profile.country, "currency": profile.currency,
-            "adult_equivalents": round(ae, 2), "assumptions": profile.assumptions,
+    return {"location": profile.location, "country": profile.country, "currency": currency,
+            "adult_equivalents": round(ae, 2), "assumptions": assumptions,
+            "data_coverage": {"market_food_groups": market_groups, "fallback_food_groups": fallback_groups,
+                              "market_commodities": sorted(market_foods)},
             "seasonal_notes": profile.seasonal_notes, "days": days}
 
 
