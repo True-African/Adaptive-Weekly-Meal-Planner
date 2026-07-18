@@ -1,0 +1,20 @@
+{
+  "location": "Example city",
+  "country": "Example country",
+  "currency": "USD",
+  "languages": ["English", "Local language"],
+  "foods": {
+    "staple": ["maize meal", "rice", "sweet potato"],
+    "legume": ["beans", "groundnuts", "lentils"],
+    "vegetable": ["cabbage", "tomato", "amaranth"],
+    "fruit": ["banana", "papaya", "orange"],
+    "animal_protein": ["egg", "small fish", "milk"],
+    "healthy_fat": ["avocado", "groundnuts", "vegetable oil"]
+  },
+  "preferred_foods": ["beans", "sweet potato"],
+  "local_names": {
+    "maize meal": "Local maize meal name",
+    "beans": "Local beans name"
+  },
+  "seasonal_notes": "Replace foods using the market file when seasonal availability changes."
+}

@@ -1,0 +1,6 @@
+date,market,admin_area,commodity,food_group,unit,price,currency,availability_score,source
+2026-07-18,Central Market,Example District,beans,legume,kg,1.20,USD,0.95,field survey
+2026-07-18,East Market,Example District,beans,legume,kg,1.30,USD,0.90,field survey
+2026-07-18,West Market,Example District,beans,legume,kg,1.10,USD,0.85,field survey
+2026-07-18,North Market,Example District,beans,legume,kg,1.25,USD,0.95,field survey
+2026-07-18,South Market,Example District,beans,legume,kg,1.15,USD,0.80,field survey
