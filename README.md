@@ -66,13 +66,13 @@ See [docs/DETAILED_GUIDE.md](docs/DETAILED_GUIDE.md) for:
 
 ## Package contents
 
-- `web_app.py`: dependency-free browser API and local server.
-- `web/index.html`: responsive dashboard for desktop and mobile browsers.
-- `scripts/adaptive_meal_planner.py`: reference planning and budgeting engine.
-- `scripts/location_discovery.py`: geocoding and food-access discovery adapter.
-- `skills/adaptive-weekly-meal-planner/SKILL.md`: reusable planning skill.
-- `examples/`: local profile and market-data templates.
-- `tests/`: regression tests.
+- [`web_app.py`](web_app.py): dependency-free browser API and local server.
+- [`web/index.html`](web/index.html): responsive dashboard for desktop and mobile browsers.
+- [`scripts/adaptive_meal_planner.py`](scripts/adaptive_meal_planner.py): reference planning and budgeting engine.
+- [`scripts/location_discovery.py`](scripts/location_discovery.py): geocoding and food-access discovery adapter.
+- [`skills/adaptive-weekly-meal-planner/SKILL.md`](skills/adaptive-weekly-meal-planner/SKILL.md): reusable planning skill.
+- [`examples/`](examples/): local profile and market-data templates.
+- [`tests/`](tests/): regression tests.
 
 ## Safety
 
