@@ -21,20 +21,22 @@ git clone https://github.com/True-African/Adaptive-Weekly-Meal-Planner.git
 cd Adaptive-Weekly-Meal-Planner
 ```
 
-### 3. Describe your location
+### 3. Choose an automatic or curated setup
 
-Copy `examples/location_profile.json` and edit it for the target setting. Add:
+The reference engine supports two setup modes.
 
-- location and country name;
-- local currency and preferred languages;
-- staple foods;
-- legumes and other protein foods;
-- vegetables and fruits;
-- animal-source foods where appropriate;
-- locally used names;
-- preferred foods and seasonal notes.
+Automatic market-data mode is the recommended starting point. Provide a market CSV with commodity names, food groups, prices, currencies, units, dates, and availability scores. The engine builds the local food pool from those observations, ranks foods, and uses generic assumptions only when a food group is missing.
 
-The profile is a fallback. Recent market observations take priority over it.
+```bash
+python scripts/adaptive_meal_planner.py \
+  --location "Example city" \
+  --market-data examples/market_prices_schema.csv \
+  --household adult_man:1 adult_woman:2 child_2_5:1
+```
+
+Curated profile mode is useful when market data is incomplete or when an implementer wants to add local names, preferred foods, seasonal notes, or foods commonly grown but not captured in the latest market survey. Copy `examples/location_profile.json` and edit it for the target setting. This profile is optional and acts as a fallback or local preference layer.
+
+Important: entering only a city name does not automatically discover local foods. A reliable local data source, such as a market feed, survey, agricultural dataset, or curated profile, is required to make location claims.
 
 ### 4. Prepare market data
 
@@ -57,10 +59,11 @@ Run the reference engine with a location, profile, market file, and household co
 ```bash
 python scripts/adaptive_meal_planner.py \
   --location "Example city" \
-  --profile examples/location_profile.json \
   --market-data examples/market_prices_schema.csv \
   --household adult_man:1 adult_woman:2 child_2_5:1
 ```
+
+Add `--profile examples/location_profile.json` when using curated profile mode or combining a profile with market data.
 
 The result is JSON containing seven days of breakfasts, lunches, dinners, snacks, water reminders, nutrition rationales, substitutions, assumptions, and the household adult-equivalent factor.
 
