@@ -24,19 +24,23 @@ The demonstration-price checkbox is only for testing the interface. Replace it w
 
 ### View it on a mobile phone
 
-Connect the phone and computer to the same trusted Wi-Fi network, then run:
+The Python server runs on the **computer**. The phone only opens the dashboard in its browser.
+
+1. Connect the computer and phone to the same trusted Wi-Fi network.
+2. On the computer, from the repository folder, run:
 
 ```bash
 python web_app.py --host 0.0.0.0 --port 8000
 ```
 
-Find the computer's local IPv4 address with `ipconfig` on Windows or `ip addr` on Linux/macOS. Open this address on the phone:
+3. On the computer, find its local IPv4 address with `ipconfig` on Windows or `ip addr` on Linux/macOS.
+4. On the phone, open the computer's address in Chrome, Safari, or another browser:
 
 ```text
 http://COMPUTER_IP:8000
 ```
 
-The layout adapts to the phone screen. For public use, deploy behind HTTPS and an authenticated production server instead of exposing the development server.
+For example, if the computer shows `192.168.1.25`, enter `http://192.168.1.25:8000` on the phone. Keep the computer's terminal and server running while using the dashboard. The layout adapts to the phone screen. For public use, deploy behind HTTPS and an authenticated production server instead of exposing the development server.
 
 ## Use the command-line engine
 
