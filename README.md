@@ -1,223 +1,75 @@
 # Adaptive Weekly Meal Planner
 
-This repository contains a globally configurable weekly meal-planning system. It helps households, schools, workers, and community programmes create affordable meal plans from foods that are locally grown, sold, in season, and affordable.
+A globally configurable weekly meal-planning system for households, schools, workers, and community programmes. It creates practical meal plans from local foods, household size, market observations, and user-confirmed availability.
 
-The system does not assume a particular country, food list, language, currency, or market. At runtime it can discover a typed location through OpenStreetMap, show nearby food-access places for user verification, and combine confirmed discovery signals with market observations.
+## See it in a browser
 
-## Get started
-
-### 1. Install Python
-
-Use Python 3.10 or newer. No third-party Python packages are required for the reference engine.
-
-```bash
-python --version
-```
-
-### 2. Download the repository
+The fastest way to understand the result is the responsive browser dashboard. It needs Python 3.10 or newer and no third-party packages.
 
 ```bash
 git clone https://github.com/True-African/Adaptive-Weekly-Meal-Planner.git
 cd Adaptive-Weekly-Meal-Planner
-```
-
-### 3. Choose online discovery or offline data
-
-The reference engine supports two location modes.
-
-Online discovery mode is the simplest first run. Type a city, district, or address. The engine geocodes it, searches nearby OpenStreetMap food markets and shops, prints the results, and pauses at a verification checkpoint.
-
-```bash
-python scripts/adaptive_meal_planner.py \
-  --location "Your city or district" \
-  --household adult_man:1 adult_woman:2 child_2_5:1
-```
-
-You can omit `--location` and be prompted interactively:
-
-```bash
-python scripts/adaptive_meal_planner.py
-```
-
-The checkpoint is important. OpenStreetMap can identify nearby food-related places and some explicit shop types, but it does not prove what is currently in stock, the price, or the full food inventory. Confirm the places and signals before continuing.
-
-When the default 5 km search is empty, the engine automatically retries at 25 km and reports both the attempted radii and the radius that produced the result. A provider timeout is reported separately from a genuine empty map result; retry later or use local market data rather than treating a timeout as evidence that no food access exists.
-
-Market-data mode is useful when you have a local market feed or survey. Provide a CSV with commodity names, food groups, prices, currencies, units, dates, and availability scores. It avoids an online discovery request and uses the supplied observations directly.
-
-```bash
-python scripts/adaptive_meal_planner.py \
-  --location "Your city or district" \
-  --market-data path/to/local_market_prices.csv \
-  --household adult_man:1 adult_woman:2 child_2_5:1
-```
-
-Use `--offline` to prevent online discovery. Use `--radius-km 10` to search a larger area. Use `--confirm-discovery` to run non-interactively after your application has displayed and verified the discovery checkpoint.
-
-The planner always returns a seven-day meal plan. If discovery finds no food places, or cannot identify enough food groups, it asks the user to consult a trusted local person and enter the foods available in each missing group. In a non-interactive run, it uses clearly labelled generic fallback foods so a budget and meal plan are still available:
-
-```bash
-python scripts/adaptive_meal_planner.py \
-  --location "Kamwenge, Uganda" \
-  --confirm-discovery \
-  --confirmed-foods staple=maize meal,sweet potato \
-  --confirmed-foods legume=beans,groundnuts \
-  --confirmed-foods vegetable=greens,tomato \
-  --confirmed-foods fruit=banana,papaya \
-  --confirmed-foods animal_protein=eggs,small fish \
-  --confirmed-foods healthy_fat=avocado,vegetable oil
-```
-
-The same local confirmation can be supplied non-interactively with `--confirmed-foods group=item1,item2`. Curated profile mode remains available when a local implementer wants to add local names, preferred foods, seasonal notes, or foods commonly grown but not captured in market data. Copy `examples/location_profile.json` and pass it with `--profile`. It is optional.
-
-Important: a place name resolves geography and may find mapped food-access points, but map listings do not prove current inventory, prices, or seasonality. The output includes `plan_status`, `verification_checkpoint`, and assumptions so a person can see whether foods came from market data, local confirmation, or fallback logic.
-
-### 4. Prepare market data when available
-
-Use `examples/market_prices_schema.csv` as the template. The checked-in values are illustrative only; replace them with observations from the target location. Each row should contain:
-
-`date, market, administrative area, commodity, food group, unit, price, currency, availability score, source`
-
-Use the same currency and unit when comparing markets. Include several markets for each important commodity. Results based on fewer than five markets are treated as provisional.
-
-The `food_group` value must be one of:
-
-`staple`, `legume`, `vegetable`, `fruit`, `animal_protein`, or `healthy_fat`.
-
-Availability scores range from `0` to `1`, where `1` means readily available. Do not enter a price without its currency and unit. The generated output reports which food groups came from market data and which groups still use fallback foods.
-
-### 5. Generate a weekly plan
-
-Run the reference engine with a location and household composition. Online discovery will pause before generation so the user can verify the result:
-
-```bash
-python scripts/adaptive_meal_planner.py \
-  --location "Your city or district" \
-  --household adult_man:1 adult_woman:2 child_2_5:1
-```
-
-Add `--profile examples/location_profile.json` when using curated profile mode or combining a profile with market data. Add `--market-data examples/market_prices_schema.csv` only to exercise the offline sample data.
-
-The result is JSON containing seven days of breakfasts, lunches, dinners, snacks, water reminders, nutrition rationales, substitutions, assumptions, and the household adult-equivalent factor.
-
-It also includes `budget_estimate`. This contains weekly line items, household-scaled purchase quantities, harmonised unit prices, totals by currency, and `price_coverage`. Prices based on fewer than five markets are marked provisional, and no market prices means the meal plan is still produced but the budget remains unpriced rather than invented.
-
-Online discovery fills the resolved country from the geocoder and looks up the country currency code through a country-metadata provider. If more than one currency is returned, or a provider is unavailable, keep the currency as a user-verifiable field before showing costs.
-
-### 6. Render the verification and price data
-
-Use `location_discovery.nearby_food_places` to display each place with its distance, source, last-checked time, and status fields. The statuses are deliberately explicit:
-
-```text
-confidence: place_access_only
-inventory_status: unknown
-price_status: unknown
-seasonal_status: unknown
-```
-
-Use `verification_checkpoint` to render one confirmation control per food group. Use `market_prices` to show the harmonised price, currency, unit, number of markets, availability, and whether the estimate is provisional. Do not show a price as current when `provisional` is true without a clear label.
-
-Supported household labels include:
-
-| Member type | Planning factor |
-|---|---:|
-| `adult_man` | 1.10 |
-| `adult_woman` | 0.90 |
-| `adolescent` | 0.90 |
-| `child_2_5` | 0.45 |
-| `child_6_13` | 0.70 |
-| `older_adult` | 0.85 |
-
-These factors estimate purchasing and cooking quantities. They are not clinical portion prescriptions.
-
-## How the system adapts
-
-The planner uses evidence in this order:
-
-1. User restrictions, preferences, and cultural context.
-2. Local market observations and availability scores.
-3. The location profile.
-4. Generic food-group defaults, clearly labelled as assumptions.
-
-For each food, the engine ranks availability, affordability, local preference, seasonal fit, and data freshness. It harmonises prices across markets using the median and trimmed mean, then rotates foods across the week and proposes substitutions within the same food group.
-
-Each main meal follows the practical pattern:
-
-`energy food + protein food + vegetable or fruit + small healthy fat + safe water`
-
-## Updating the plan
-
-Refresh the market CSV whenever new observations arrive, then rerun the same command. Online discovery results are cached under `.cache/osm/` and should be refreshed according to your deployment's data policy. Do not treat cached place listings as current inventory.
-
-For an automated deployment, schedule a data-ingestion job that:
-
-1. validates dates, currencies, units, and food groups;
-2. merges observations from local markets or approved data providers;
-3. writes a versioned market CSV;
-4. runs the planner;
-5. publishes the JSON to an offline app, dashboard, SMS service, or community-health-worker tool.
-
-Keep the last valid market file on the device for offline fallback. Mark stale data with its observation date instead of presenting it as current.
-
-## OpenStreetMap usage and attribution
-
-The discovery adapter uses a user-triggered Nominatim geocoding request and an Overpass place query. Set a clear application `User-Agent`, cache results, keep the service replaceable, and do not use the public Nominatim endpoint for autocomplete, bulk geocoding, or systematic area harvesting. Display OpenStreetMap attribution in the application:
-
-`OpenStreetMap contributors, ODbL 1.0`
-
-For a larger deployment, configure a hosted or self-managed geocoder and place-search service behind the same adapter interface.
-
-## Using the output with an app
-
-The reference engine is intentionally dependency-free so it can be embedded in:
-
-- an offline Android application;
-- a Gradio or Hugging Face demo;
-- a community health-worker tablet workflow;
-- an SMS or voice-message service;
-- a school or workplace meal-planning dashboard.
-
-For local users, present today's meals first, followed by what to buy, substitutions, batch-cooking guidance, and simple language or icon cues. Keep technical evidence and scoring in an appendix or implementer view.
-
-## Open the browser dashboard
-
-The repository includes a responsive browser dashboard that calls the same Python planner. It needs no extra Python package:
-
-```bash
 python web_app.py
 ```
 
-Open `http://127.0.0.1:8000` on the computer. Enter a location, household members, and any foods confirmed by a local person. The dashboard displays the seven-day meal plan first, followed by household-scaled budget estimates and data-confidence notes. The demonstration-price checkbox is for testing the interface; replace it with current local market observations for real budgeting.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) on the computer. Enter a location, household members, and any foods confirmed by a local person. The dashboard presents:
 
-To view it on a phone connected to the same trusted Wi-Fi network, start the server on the local network:
+- the seven-day meal plan first;
+- household-scaled budget estimates;
+- price coverage and provisional-price labels;
+- local food confirmation and substitutions;
+- optional mapped food-access places from OpenStreetMap.
+
+The demonstration-price checkbox is only for testing the interface. Replace it with current local market observations before using the budget for decisions.
+
+### View it on a mobile phone
+
+Connect the phone and computer to the same trusted Wi-Fi network, then run:
 
 ```bash
 python web_app.py --host 0.0.0.0 --port 8000
 ```
 
-Find the computer's local IPv4 address with `ipconfig` on Windows or `ip addr` on Linux/macOS, then open `http://COMPUTER_IP:8000` on the phone. Keep this mode on a trusted network only; for public use, place the application behind HTTPS and an authenticated production server. A Hugging Face Space can use the same `build_plan()` function behind Gradio or another web frontend.
+Find the computer's local IPv4 address with `ipconfig` on Windows or `ip addr` on Linux/macOS. Open this address on the phone:
 
-## Testing
-
-Run the checks before publishing changes:
-
-```bash
-python -m py_compile scripts/adaptive_meal_planner.py
-python -m unittest discover -s tests -p "test_*.py"
+```text
+http://COMPUTER_IP:8000
 ```
 
-GitHub Actions runs the same checks on pushes and pull requests.
+The layout adapts to the phone screen. For public use, deploy behind HTTPS and an authenticated production server instead of exposing the development server.
 
-## Safety and scope
+## Use the command-line engine
 
-This is a general planning and budgeting aid. It does not diagnose disease or replace clinical nutrition care. Seek qualified professional advice for diabetes, kidney disease, pregnancy complications, severe malnutrition, food allergy, serious illness, swallowing difficulty, or child growth concerns. Do not use it to generate starvation diets, detox diets, unsafe supplement plans, or therapeutic diets without professional oversight.
+```bash
+python scripts/adaptive_meal_planner.py \
+  --location "Your city or district" \
+  --household adult_man:1 adult_woman:2 child_2_5:1
+```
+
+The planner always returns a seven-day plan. If location discovery is incomplete, interactive users are prompted to ask a trusted local person about missing food groups. Non-interactive runs use clearly labelled fallback foods.
+
+## Detailed documentation
+
+See [docs/DETAILED_GUIDE.md](docs/DETAILED_GUIDE.md) for:
+
+- command-line options and local confirmation;
+- market CSV format and budget logic;
+- household quantity factors;
+- location adaptation and fallback rules;
+- OpenStreetMap usage and attribution;
+- automation, offline deployment, and Hugging Face adaptation;
+- safety boundaries and testing commands.
 
 ## Package contents
 
-- `scripts/adaptive_meal_planner.py`: dependency-free reference engine.
-- `scripts/location_discovery.py`: Nominatim and Overpass discovery adapter with caching and OSM attribution.
-- `skills/adaptive-weekly-meal-planner/SKILL.md`: reusable Codex skill.
-- `examples/location_profile.json`: editable location configuration.
-- `examples/market_prices_schema.csv`: portable market data template.
+- `web_app.py`: dependency-free browser API and local server.
+- `web/index.html`: responsive dashboard for desktop and mobile browsers.
+- `scripts/adaptive_meal_planner.py`: reference planning and budgeting engine.
+- `scripts/location_discovery.py`: geocoding and food-access discovery adapter.
+- `skills/adaptive-weekly-meal-planner/SKILL.md`: reusable planning skill.
+- `examples/`: local profile and market-data templates.
 - `tests/`: regression tests.
-- `.github/workflows/test.yml`: automated GitHub checks.
+
+## Safety
+
+This is a general planning and budgeting aid. It does not diagnose disease or replace clinical nutrition care. Seek qualified professional advice for medical, pregnancy, allergy, severe malnutrition, or child growth concerns.
