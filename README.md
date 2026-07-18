@@ -1,36 +1,143 @@
-# Adaptive Weekly Meal Planner Skill
+# Adaptive Weekly Meal Planner
 
-Reusable Codex skill and reference implementation for generating affordable, culturally appropriate weekly meal plans from the foods that are grown, sold, and affordable in a specified location.
+This repository contains a globally configurable weekly meal-planning system. It helps households, schools, workers, and community programmes create affordable meal plans from foods that are locally grown, sold, in season, and affordable.
 
-The planner is location-first and globally configurable. A new country, city, language, currency, or food system can be configured with a small JSON profile and local market observations.
+The system does not assume a particular country, food list, language, currency, or market. Local information is supplied through a location profile and market observations.
 
-## Package contents
+## Get started
 
-- `skills/adaptive-weekly-meal-planner/SKILL.md`: reusable Codex instructions.
-- `scripts/adaptive_meal_planner.py`: dependency-free reference engine for profiles, market ranking, portion scaling, substitutions, and seven-day plans.
-- `examples/market_prices_schema.csv`: portable market data schema with local currency and food-group fields.
-- `examples/location_profile.json`: example configuration showing how to add a location without changing the algorithm.
+### 1. Install Python
 
-## Quick test
+Use Python 3.10 or newer. No third-party Python packages are required for the reference engine.
 
-```text
+```bash
+python --version
+```
+
+### 2. Download the repository
+
+```bash
+git clone https://github.com/True-African/AdaptiveWeeklyMealPlanner.git
+cd AdaptiveWeeklyMealPlanner
+```
+
+### 3. Describe your location
+
+Copy `examples/location_profile.json` and edit it for the target setting. Add:
+
+- location and country name;
+- local currency and preferred languages;
+- staple foods;
+- legumes and other protein foods;
+- vegetables and fruits;
+- animal-source foods where appropriate;
+- locally used names;
+- preferred foods and seasonal notes.
+
+The profile is a fallback. Recent market observations take priority over it.
+
+### 4. Prepare market data
+
+Use `examples/market_prices_schema.csv` as the template. Each row should contain:
+
+`date, market, administrative area, commodity, food group, unit, price, currency, availability score, source`
+
+Use the same currency and unit when comparing markets. Include several markets for each important commodity. Results based on fewer than five markets are treated as provisional.
+
+The `food_group` value must be one of:
+
+`staple`, `legume`, `vegetable`, `fruit`, `animal_protein`, or `healthy_fat`.
+
+Availability scores range from `0` to `1`, where `1` means readily available. Do not enter a price without its currency and unit.
+
+### 5. Generate a weekly plan
+
+Run the reference engine with a location, profile, market file, and household composition:
+
+```bash
 python scripts/adaptive_meal_planner.py \
   --location "Example city" \
+  --profile examples/location_profile.json \
   --market-data examples/market_prices_schema.csv \
   --household adult_man:1 adult_woman:2 child_2_5:1
 ```
 
-The engine uses local market rows first. If a food is unavailable from the market data, it falls back to the configured location profile, then to a generic food-group template. Every fallback is labelled in the output.
+The result is JSON containing seven days of breakfasts, lunches, dinners, snacks, water reminders, nutrition rationales, substitutions, assumptions, and the household adult-equivalent factor.
 
-## Adaptation model
+Supported household labels include:
 
-1. Parse the location and optional local profile.
-2. Read market observations, food groups, prices, seasonality, and availability.
-3. Harmonise each commodity across markets using the median and trimmed mean.
-4. Rank foods within each food group by availability, affordability, local preference, and recentness.
-5. Assemble meals using the pattern staple + protein + vegetable/fruit + small healthy fat where available.
-6. Rotate foods across seven days to protect dietary diversity.
-7. Scale quantities and estimated cost with adult-equivalent household members.
-8. Provide local substitutions when a top-ranked food is missing or too expensive.
+| Member type | Planning factor |
+|---|---:|
+| `adult_man` | 1.10 |
+| `adult_woman` | 0.90 |
+| `adolescent` | 0.90 |
+| `child_2_5` | 0.45 |
+| `child_6_13` | 0.70 |
+| `older_adult` | 0.85 |
 
-The output is a planning and budgeting aid, not a clinical diet prescription.
+These factors estimate purchasing and cooking quantities. They are not clinical portion prescriptions.
+
+## How the system adapts
+
+The planner uses evidence in this order:
+
+1. User restrictions, preferences, and cultural context.
+2. Local market observations and availability scores.
+3. The location profile.
+4. Generic food-group defaults, clearly labelled as assumptions.
+
+For each food, the engine ranks availability, affordability, local preference, seasonal fit, and data freshness. It harmonises prices across markets using the median and trimmed mean, then rotates foods across the week and proposes substitutions within the same food group.
+
+Each main meal follows the practical pattern:
+
+`energy food + protein food + vegetable or fruit + small healthy fat + safe water`
+
+## Updating the plan
+
+Refresh the market CSV whenever new observations arrive, then rerun the same command. This supports weekly or daily updates without changing the algorithm.
+
+For an automated deployment, schedule a data-ingestion job that:
+
+1. validates dates, currencies, units, and food groups;
+2. merges observations from local markets or approved data providers;
+3. writes a versioned market CSV;
+4. runs the planner;
+5. publishes the JSON to an offline app, dashboard, SMS service, or community-health-worker tool.
+
+Keep the last valid market file on the device for offline fallback. Mark stale data with its observation date instead of presenting it as current.
+
+## Using the output with an app
+
+The reference engine is intentionally dependency-free so it can be embedded in:
+
+- an offline Android application;
+- a Gradio or Hugging Face demo;
+- a community health-worker tablet workflow;
+- an SMS or voice-message service;
+- a school or workplace meal-planning dashboard.
+
+For local users, present today's meals first, followed by what to buy, substitutions, batch-cooking guidance, and simple language or icon cues. Keep technical evidence and scoring in an appendix or implementer view.
+
+## Testing
+
+Run the checks before publishing changes:
+
+```bash
+python -m py_compile scripts/adaptive_meal_planner.py
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+GitHub Actions runs the same checks on pushes and pull requests.
+
+## Safety and scope
+
+This is a general planning and budgeting aid. It does not diagnose disease or replace clinical nutrition care. Seek qualified professional advice for diabetes, kidney disease, pregnancy complications, severe malnutrition, food allergy, serious illness, swallowing difficulty, or child growth concerns. Do not use it to generate starvation diets, detox diets, unsafe supplement plans, or therapeutic diets without professional oversight.
+
+## Package contents
+
+- `scripts/adaptive_meal_planner.py`: dependency-free reference engine.
+- `skills/adaptive-weekly-meal-planner/SKILL.md`: reusable Codex skill.
+- `examples/location_profile.json`: editable location configuration.
+- `examples/market_prices_schema.csv`: portable market data template.
+- `tests/`: regression tests.
+- `.github/workflows/test.yml`: automated GitHub checks.
